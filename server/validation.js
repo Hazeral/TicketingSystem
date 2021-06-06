@@ -81,7 +81,15 @@ module.exports.replyTicketValidation = data => {
 module.exports.addModerationValidation = data => {
     const schema = joi.object({
         reason: joi.string().max(255).required(),
-        expires: joi.date()
+        expires: joi.date().timestamp()
+    });
+
+    return schema.validate(data);
+};
+
+module.exports.addNoteValidation = data => {
+    const schema = joi.object({
+        content: joi.string().max(255).required()
     });
 
     return schema.validate(data);

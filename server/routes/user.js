@@ -90,8 +90,13 @@ router.get('/@me/tickets', async (req, res) => {
         try {
             const tickets = await Ticket.find({ author: user._id }).select({ messages: 0 })
             .populate('author', { name: 1, group: 1 })
-            .populate('closedBy', { name: 1, group: 1 })
-            .populate('reopenedBy', { name: 1, group: 1 });
+            .populate({
+                path: 'logs',
+                populate: {
+                  path: 'author',
+                  select: { name: 1, group: 1 }
+                }
+            });
 
             res.json(tickets);
         } catch {
@@ -108,8 +113,13 @@ router.get('/:id/tickets', restrictTo('admin', 'moderator', 'support'), async (r
             try {
                 const tickets = await Ticket.find({ author: user._id }).select({ messages: 0 })
                 .populate('author', { name: 1, group: 1 })
-                .populate('closedBy', { name: 1, group: 1 })
-                .populate('reopenedBy', { name: 1, group: 1 });
+                .populate({
+                    path: 'logs',
+                    populate: {
+                      path: 'author',
+                      select: { name: 1, group: 1 }
+                    }
+                });
     
                 res.json(tickets);
             } catch {
@@ -160,7 +170,7 @@ router.patch('/:id/password', restrictTo('admin'), async (req, res) => {
     try {
         const user = await User.findById(ObjectId(req.params.id));
         if (user) {
-            if (user.group == 'admin' && req.user.group == 'moderator') return res.status(403).json({ error: 'You cannot edit this user' });
+            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot edit this user' });
     
             const samePass = await bcrypt.compare(req.body.password, user.password);
             if (samePass) return res.status(400).json({ error: 'New password cannot be the same' });
@@ -200,7 +210,7 @@ router.patch('/:id/details', restrictTo('admin', 'moderator'), async (req, res) 
     try {
         const user = await User.findById(ObjectId(req.params.id)).select({ password: 0 });
         if (user) {
-            if (user.group == 'admin' && req.user.group == 'moderator') return res.status(403).json({ error: 'You cannot edit this user' });
+            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot edit this user' });
             
             if (user.name == req.body.name && user.email == req.body.email) return res.status(400).json({ error: 'Both name and email are unchanged' });
 
@@ -305,6 +315,7 @@ router.post('/:id/block', restrictTo('admin', 'moderator'), async (req, res) => 
         const user = await User.findById(ObjectId(req.params.id));
         if (user) {
             if (user.blocked != null) return res.status(400).json({ error: "User already blocked" });
+            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot block this user' });
 
             const moderation = new Moderation({
                 author: req.user._id,
@@ -351,7 +362,7 @@ router.post('/:id/unblock', restrictTo('admin'), async (req, res) => {
                 const savedModeration = await moderation.save();
                 const newModeration = await Moderation.populate(savedModeration, [{ path: 'author', select: { name: 1, group: 1 } }, { path: 'target', select: { name: 1, group: 1 } }]);
     
-                await User.updateOne({ _id: user._id}, { $set: { blocked: undefined } });
+                await User.updateOne({ _id: user._id }, { $set: { blocked: undefined } });
 
                 res.json(newModeration);
             } catch(err) {
@@ -372,6 +383,7 @@ router.post('/:id/mute', restrictTo('admin', 'moderator'), async (req, res) => {
         const user = await User.findById(ObjectId(req.params.id));
         if (user) {
             if (user.muted != null) return res.status(400).json({ error: "User already muted" });
+            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot mute this user' });
 
             const moderation = new Moderation({
                 author: req.user._id,

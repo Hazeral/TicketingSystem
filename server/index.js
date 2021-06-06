@@ -8,6 +8,8 @@ const ticketsRoute = require('./routes/tickets');
 const ticketRoute = require('./routes/ticket');
 const moderationsRoute = require('./routes/moderations');
 const moderationRoute = require('./routes/moderation');
+const notesRoute = require('./routes/notes');
+const noteRoute = require('./routes/note');
 const restricted = require('./middleware/restricted');
 const restrictTo = require('./middleware/restrictTo');
 const app = express();
@@ -28,6 +30,8 @@ app.use('/api/tickets', restricted, restrictTo('admin', 'moderator', 'support'),
 app.use('/api/ticket', restricted, ticketRoute);
 app.use('/api/moderations', restricted, restrictTo('admin'), moderationsRoute);
 app.use('/api/moderation', restricted, restrictTo('admin', 'moderator'), moderationRoute);
+app.use('/api/notes', restricted, restrictTo('admin', 'moderator', 'support'), notesRoute);
+app.use('/api/note', restricted, restrictTo('admin', 'moderator', 'support'), noteRoute);
 
 app.listen(port, () => {
     console.log(`Server listening on port ${port}`);

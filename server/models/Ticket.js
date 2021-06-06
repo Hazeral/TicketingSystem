@@ -13,6 +13,24 @@ const messageSchema = new mongoose.Schema({
     }
 }, { timestamps: true});
 
+const logSchema = new mongoose.Schema({
+    author: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User'
+    },
+    action: {
+        type: String,
+        required: true,
+        enum: ['close', 'open', 'create', 'close_permanently', 'change_priority', 'change_category']
+    },
+    info: {
+        type: String,
+        max: 255,
+        default: null
+    }
+}, { timestamps: true});
+
 const ticketSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -25,28 +43,31 @@ const ticketSchema = new mongoose.Schema({
         ref: 'User'
     },
     messages: [messageSchema],
-    newReplyFromSupport: {
-        type: Boolean,
-        default: false
+    priority: {
+        type: String,
+        default: 'medium',
+        enum: ['low', 'medium', 'high']
     },
-    newReplyFromUser: {
-        type: Boolean,
-        default: true
+    status: {
+        type: String,
+        default: 'open',
+        enum: ['open', 'closed', 'closed_permanently']
     },
-    closed: {
-        type: Boolean,
-        default: false
+    category: {
+        type: String,
+        default: 'None'
     },
-    closedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null
+    newReply: {
+        fromUser: {
+            type: Boolean,
+            default: true
+        },
+        fromSupport: {
+            type: Boolean,
+            default: false
+        }
     },
-    reopenedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null
-    }
+    logs: [logSchema]
 }, { timestamps: true, collection : 'tickets' });
 
 module.exports = mongoose.model('Ticket', ticketSchema);
