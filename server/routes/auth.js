@@ -2,6 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcrypt');
 const { generateToken } = require('../token');
 const User = require('../models/User');
+const Moderation = require('../models/Moderation');
 const { registerValidation, loginValidation } = require('../validation');
 
 router.post('/register', async (req, res) => {
@@ -39,6 +40,12 @@ router.post('/login', async (req, res) => {
 
     const validPass = await bcrypt.compare(req.body.password, user.password);
     if (!validPass) return res.status(400).json({ error: 'Invalid password' });
+
+    const blocked = await Moderation.findOne({ target: user._id, type: 'block', active: true });
+    if (blocked) {
+        console.log(blocked)
+        return res.status(403).json({ error: 'Account blocked' });
+    }
 
     const token = generateToken(user);
 

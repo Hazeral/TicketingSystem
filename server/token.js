@@ -9,7 +9,7 @@ module.exports.generateToken = user => {
 module.exports.verifyToken = async token => {
     try {
         const verified = jwt.verify(token, process.env.JWT_SIG);
-        const user = await User.findOne({ _id: verified.id });
+        const user = await User.findOne({ _id: verified.id }).populate([{ path: 'muted' }, { path: 'blocked' }]);
         if (verified.valid != (user.password).slice(-3)) return null;
         return user;
     } catch (err) {

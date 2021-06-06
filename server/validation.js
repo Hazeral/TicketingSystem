@@ -60,3 +60,29 @@ module.exports.changeEmailValidation = data => {
 
     return schema.validate(data);
 };
+
+module.exports.createTicketValidation = data => {
+    const schema = joi.object({
+        title: joi.string().max(50).required(),
+        message: joi.string().max(500).required()
+    });
+
+    return schema.validate(data);
+};
+
+module.exports.replyTicketValidation = data => {
+    const schema = joi.object({
+        message: joi.string().max(500).required()
+    });
+
+    return schema.validate(data);
+};
+
+module.exports.addModerationValidation = data => {
+    const schema = joi.object({
+        reason: joi.string().max(255).required(),
+        expires: joi.date()
+    });
+
+    return schema.validate(data);
+};

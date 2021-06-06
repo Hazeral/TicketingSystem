@@ -17,8 +17,19 @@ const userSchema = new mongoose.Schema({
     },
     group: {
         type: String,
-        default: 'user'
-    } // user, support, moderator, admin
+        default: 'user',
+        enum: ['user', 'support', 'moderator', 'admin']
+    },
+    muted: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Moderation',
+        default: null
+    },
+    blocked: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Moderation',
+        default: null
+    }
 }, { timestamps: true, collection : 'users' });
 
 module.exports = mongoose.model('User', userSchema);

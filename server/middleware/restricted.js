@@ -1,4 +1,5 @@
 const { verifyToken } = require('../token');
+const Moderation = require('../models/Moderation');
 
 module.exports = async (req, res, next) => {
     const token = req.header('auth');
@@ -6,6 +7,9 @@ module.exports = async (req, res, next) => {
 
     const user = await verifyToken(token);
     if (user != null) {
+        if (user.blocked != null) {
+            return res.status(403).json({ error: 'Account blocked', reason: user.blocked.reason });
+        }
         req.user = user;
         next();
     } else {
