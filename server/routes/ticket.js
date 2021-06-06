@@ -1,6 +1,5 @@
 const router = require('express').Router();
 const { ObjectId } = require('mongoose').mongo;
-const User = require('../models/User');
 const Ticket = require('../models/Ticket');
 const restrictTo = require('../middleware/restrictTo');
 const restrictMuted = require('../middleware/restrictMuted');
