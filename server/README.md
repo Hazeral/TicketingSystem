@@ -36,7 +36,7 @@ Route | Method | Description | Restriction | JSON Body
 /api/user/:id | DELETE | Delete user | admin | -
 /api/user/:id/password | PATCH | Change user password | admin | password: required
 /api/user/:id/details | PATCH | Change user name and email | admin<br>moderator | name: required<br>email: required
-/api/user/:id/group | PATCH | Change user group (permission level) | admin | group: required ('user'<br>'support'<br>'moderator'<br>'admin')
+/api/user/:id/group | PATCH | Change user group (permission level) | admin | group: required
 /api/user/:id/moderations | GET | Get array of user's moderation log | admin<br>moderator | -
 /api/user/:id/moderations/authored | GET | Get array of user's authored moderations | admin | -
 /api/user/:id/block | POST | Block an account (optional expiry) | admin<br>moderator | reason: required<br>expires: optional (timestamp)
