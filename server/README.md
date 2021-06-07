@@ -24,7 +24,7 @@ node index
 ## API routes
 Route | Method | Description | Restriction | JSON Body
 --- | --- | --- | --- | ---
-/api/auth/register | POST | Register account and return token | - | name: required, email: required, password: required
+/api/auth/register | POST | Register account and return token | - | name: required<br>email: required<br>password: required
 /api/auth/login | POST | Login to account and return token | - | email: required, password: required
 /api/users | GET | Get array of all users | admin, moderator | -
 /api/user/@me | GET | Get current account details | user | -
