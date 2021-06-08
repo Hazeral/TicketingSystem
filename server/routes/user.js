@@ -4,9 +4,18 @@ const { generateToken } = require('../token');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Moderation = require('../models/Moderation');
+const BlockedIP = require('../models/BlockedIP');
+const Log = require('../models/Log');
 const Ticket = require('../models/Ticket');
 const restrictTo = require('../middleware/restrictTo');
-const { changePasswordValidation, changePasswordAdminValidation, changeDetailsValidation, changeGroupValidation, changeEmailValidation, addModerationValidation } = require('../validation');
+const {
+    changePasswordValidation,
+    changePasswordAdminValidation,
+    changeDetailsValidation,
+    changeGroupValidation,
+    changeEmailValidation,
+    addModerationValidation
+} = require('../validation');
 
 router.get('/@me', (req, res) => {
     return res.json({
@@ -25,10 +34,17 @@ router.patch('/@me/password', async (req, res) => {
 
     const user = req.user;
 
-    const validPass = await bcrypt.compare(req.body.current_password, user.password);
-    if (!validPass) return res.status(400).json({ error: 'Invalid current password' });
+    const validPass = await bcrypt.compare(
+        req.body.current_password,
+        user.password
+    );
+    if (!validPass)
+        return res.status(400).json({ error: 'Invalid current password' });
 
-    if (req.body.current_password == req.body.password) return res.status(400).json({ error: 'New password cannot be the same' });
+    if (req.body.current_password == req.body.password)
+        return res
+            .status(400)
+            .json({ error: 'New password cannot be the same' });
 
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(req.body.password, salt);
@@ -58,7 +74,10 @@ router.patch('/@me/email', async (req, res) => {
 
     const user = req.user;
     try {
-        await User.updateOne({ _id: user._id }, { $set: { email: req.body.email } });
+        await User.updateOne(
+            { _id: user._id },
+            { $set: { email: req.body.email } }
+        );
 
         const moderation = new Moderation({
             author: req.user._id,
@@ -88,64 +107,82 @@ router.get('/@me/tickets', async (req, res) => {
     const user = req.user;
     if (user) {
         try {
-            const tickets = await Ticket.find({ author: user._id }).select({ messages: 0 })
-            .populate('author', { name: 1, group: 1 })
-            .populate({
-                path: 'logs',
-                populate: {
-                  path: 'author',
-                  select: { name: 1, group: 1 }
-                }
-            });
+            const tickets = await Ticket.find({ author: user._id })
+                .select({ messages: 0 })
+                .populate('author', { name: 1, group: 1 })
+                .populate({
+                    path: 'logs',
+                    populate: {
+                        path: 'author',
+                        select: { name: 1, group: 1 }
+                    }
+                });
 
             res.json(tickets);
         } catch {
             res.status(500).json({ error: 'Error listing tickets' });
         }
-    }
-    else res.status(404).json({ error: 'User not found' });
+    } else res.status(404).json({ error: 'User not found' });
 });
 
-router.get('/:id/tickets', restrictTo('admin', 'moderator', 'support'), async (req, res) => {
-    try {
-        const user = await User.findById(ObjectId(req.params.id)).select({ "password": 0 });
-        if (user) {
-            try {
-                const tickets = await Ticket.find({ author: user._id }).select({ messages: 0 })
-                .populate('author', { name: 1, group: 1 })
-                .populate({
-                    path: 'logs',
-                    populate: {
-                      path: 'author',
-                      select: { name: 1, group: 1 }
-                    }
-                });
-    
-                res.json(tickets);
-            } catch {
-                res.status(500).json({ error: 'Error listing tickets' });
-            }
+router.get(
+    '/:id/tickets',
+    restrictTo('admin', 'moderator', 'support'),
+    async (req, res) => {
+        try {
+            const user = await User.findById(ObjectId(req.params.id)).select({
+                password: 0
+            });
+            if (user) {
+                try {
+                    const tickets = await Ticket.find({ author: user._id })
+                        .select({ messages: 0 })
+                        .populate('author', { name: 1, group: 1 })
+                        .populate({
+                            path: 'logs',
+                            populate: {
+                                path: 'author',
+                                select: { name: 1, group: 1 }
+                            }
+                        });
+
+                    res.json(tickets);
+                } catch {
+                    res.status(500).json({ error: 'Error listing tickets' });
+                }
+            } else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
         }
-        else res.status(404).json({ error: 'User not found' });
-    } catch {
-        res.status(400).json({ error: 'User not found' });
     }
-});
+);
 
-router.get('/:id', restrictTo('admin', 'moderator', 'support'), async (req, res) => {
-    try {
-        const user = await User.findById(ObjectId(req.params.id)).select({ "password": 0 });
-        const populatedUser = await User.populate(user, [{ path: 'muted' }, { path: 'blocked' }]);
-        if (user) res.json(populatedUser);
-        else res.status(404).json({ error: 'User not found' });
-    } catch {
-        res.status(400).json({ error: 'User not found' });
+router.get(
+    '/:id',
+    restrictTo('admin', 'moderator', 'support'),
+    async (req, res) => {
+        try {
+            const user = await User.findById(ObjectId(req.params.id)).select({
+                password: 0
+            });
+            const populatedUser = await User.populate(user, [
+                { path: 'muted' },
+                { path: 'blocked' }
+            ]);
+
+            if (user) res.json(populatedUser);
+            else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
+        }
     }
-});
+);
 
 router.delete('/:id', restrictTo('admin'), async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(ObjectId(req.params.id)).select({ password: 0 });
+        const user = await User.findByIdAndDelete(
+            ObjectId(req.params.id)
+        ).select({ password: 0 });
 
         const moderation = new Moderation({
             author: req.user._id,
@@ -155,7 +192,10 @@ router.delete('/:id', restrictTo('admin'), async (req, res) => {
         });
         await moderation.save();
 
-        const populatedUser = await User.populate(user, [{ path: 'muted' }, { path: 'blocked' }]);
+        const populatedUser = await User.populate(user, [
+            { path: 'muted' },
+            { path: 'blocked' }
+        ]);
         if (user) res.json(populatedUser);
         else res.status(404).json({ error: 'User not found' });
     } catch {
@@ -170,16 +210,28 @@ router.patch('/:id/password', restrictTo('admin'), async (req, res) => {
     try {
         const user = await User.findById(ObjectId(req.params.id));
         if (user) {
-            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot edit this user' });
-    
-            const samePass = await bcrypt.compare(req.body.password, user.password);
-            if (samePass) return res.status(400).json({ error: 'New password cannot be the same' });
-    
+            if (user.group == 'admin' && req.user.group != 'admin')
+                return res
+                    .status(403)
+                    .json({ error: 'You cannot edit this user' });
+
+            const samePass = await bcrypt.compare(
+                req.body.password,
+                user.password
+            );
+            if (samePass)
+                return res
+                    .status(400)
+                    .json({ error: 'New password cannot be the same' });
+
             const salt = await bcrypt.genSalt(10);
             const hash = await bcrypt.hash(req.body.password, salt);
-    
+
             try {
-                await User.updateOne({ _id: user._id }, { $set: { password: hash } });
+                await User.updateOne(
+                    { _id: user._id },
+                    { $set: { password: hash } }
+                );
 
                 const moderation = new Moderation({
                     author: req.user._id,
@@ -189,65 +241,92 @@ router.patch('/:id/password', restrictTo('admin'), async (req, res) => {
                 });
                 await moderation.save();
 
-                const filteredUser = await User.findById(user._id).select({ password: 0 });
-                const populatedUser = await User.populate(filteredUser, [{ path: 'muted' }, { path: 'blocked' }]);
+                const filteredUser = await User.findById(user._id).select({
+                    password: 0
+                });
+                const populatedUser = await User.populate(filteredUser, [
+                    { path: 'muted' },
+                    { path: 'blocked' }
+                ]);
 
                 res.json(populatedUser);
             } catch {
                 res.status(500).json({ error: 'Error updating password' });
             }
-        }
-        else res.status(404).json({ error: 'User not found' });
+        } else res.status(404).json({ error: 'User not found' });
     } catch {
         res.status(400).json({ error: 'User not found' });
     }
 });
 
-router.patch('/:id/details', restrictTo('admin', 'moderator'), async (req, res) => {
-    const { error } = changeDetailsValidation(req.body);
-    if (error) return res.status(400).json({ error: error.details[0].message });
+router.patch(
+    '/:id/details',
+    restrictTo('admin', 'moderator'),
+    async (req, res) => {
+        const { error } = changeDetailsValidation(req.body);
+        if (error)
+            return res.status(400).json({ error: error.details[0].message });
 
-    try {
-        const user = await User.findById(ObjectId(req.params.id)).select({ password: 0 });
-        if (user) {
-            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot edit this user' });
-            
-            if (user.name == req.body.name && user.email == req.body.email) return res.status(400).json({ error: 'Both name and email are unchanged' });
+        try {
+            const user = await User.findById(ObjectId(req.params.id)).select({
+                password: 0
+            });
+            if (user) {
+                if (user.group == 'admin' && req.user.group != 'admin')
+                    return res
+                        .status(403)
+                        .json({ error: 'You cannot edit this user' });
 
-            try {
-                await User.updateOne({ _id: user._id }, { $set: { name: req.body.name, email: req.body.email } });
+                if (user.name == req.body.name && user.email == req.body.email)
+                    return res
+                        .status(400)
+                        .json({ error: 'Both name and email are unchanged' });
 
-                const moderation = new Moderation({
-                    author: req.user._id,
-                    target: user._id,
-                    type: 'update_info',
-                    reason: `Updated details: '${user.name}' => '${req.body.name}', '${user.email}' => '${req.body.email}'`
-                });
-                await moderation.save();
+                try {
+                    await User.updateOne(
+                        { _id: user._id },
+                        { $set: { name: req.body.name, email: req.body.email } }
+                    );
 
-                user.name = req.body.name;
-                user.email = req.body.email;
-                const populatedUser = await User.populate(user, [{ path: 'muted' }, { path: 'blocked' }]);
-                res.json(populatedUser);
-            } catch {
-                res.status(500).json({ error: 'Error updating details' });
-            }
+                    const moderation = new Moderation({
+                        author: req.user._id,
+                        target: user._id,
+                        type: 'update_info',
+                        reason: `Updated details: '${user.name}' => '${req.body.name}', '${user.email}' => '${req.body.email}'`
+                    });
+                    await moderation.save();
+
+                    user.name = req.body.name;
+                    user.email = req.body.email;
+                    const populatedUser = await User.populate(user, [
+                        { path: 'muted' },
+                        { path: 'blocked' }
+                    ]);
+                    res.json(populatedUser);
+                } catch {
+                    res.status(500).json({ error: 'Error updating details' });
+                }
+            } else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
         }
-        else res.status(404).json({ error: 'User not found' });
-    } catch {
-        res.status(400).json({ error: 'User not found' });
     }
-});
+);
 
 router.patch('/:id/group', restrictTo('admin'), async (req, res) => {
     const { error } = changeGroupValidation(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
     try {
-        const user = await User.findById(ObjectId(req.params.id)).select({ password: 0 });
+        const user = await User.findById(ObjectId(req.params.id)).select({
+            password: 0
+        });
         if (user) {
             try {
-                await User.updateOne({ _id: user._id }, { $set: { group: req.body.group } });
+                await User.updateOne(
+                    { _id: user._id },
+                    { $set: { group: req.body.group } }
+                );
 
                 const moderation = new Moderation({
                     author: req.user._id,
@@ -258,98 +337,307 @@ router.patch('/:id/group', restrictTo('admin'), async (req, res) => {
                 await moderation.save();
 
                 user.group = req.body.group;
-                const populatedUser = await User.populate(user, [{ path: 'muted' }, { path: 'blocked' }]);
+                const populatedUser = await User.populate(user, [
+                    { path: 'muted' },
+                    { path: 'blocked' }
+                ]);
 
                 res.json(populatedUser);
             } catch {
                 res.status(500).json({ error: 'Error updating group' });
             }
-        }
-        else res.status(404).json({ error: 'User not found' });
+        } else res.status(404).json({ error: 'User not found' });
     } catch {
         res.status(400).json({ error: 'User not found' });
     }
 });
 
-router.get('/:id/moderations', restrictTo('admin', 'moderator'), async (req, res) => {
+router.get(
+    '/:id/moderations',
+    restrictTo('admin', 'moderator'),
+    async (req, res) => {
+        try {
+            const user = await User.findById(ObjectId(req.params.id));
+            if (user) {
+                try {
+                    const logs = await Moderation.find({ target: user._id })
+                        .populate('author', { name: 1, group: 1 })
+                        .populate('target', { name: 1, group: 1 });
+
+                    res.json(logs);
+                } catch {
+                    res.status(500).json({ error: 'Error listing moderation' });
+                }
+            } else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
+        }
+    }
+);
+
+router.get(
+    '/:id/moderations/authored',
+    restrictTo('admin'),
+    async (req, res) => {
+        try {
+            const user = await User.findById(ObjectId(req.params.id));
+            if (user) {
+                try {
+                    const logs = await Moderation.find({ author: user._id })
+                        .populate('author', { name: 1, group: 1 })
+                        .populate('target', { name: 1, group: 1 });
+
+                    res.json(logs);
+                } catch {
+                    res.status(500).json({ error: 'Error listing moderation' });
+                }
+            } else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
+        }
+    }
+);
+
+router.post(
+    '/:id/block',
+    restrictTo('admin', 'moderator'),
+    async (req, res) => {
+        const { error } = addModerationValidation(req.body);
+        if (error)
+            return res.status(400).json({ error: error.details[0].message });
+
+        try {
+            const user = await User.findById(ObjectId(req.params.id));
+            if (user) {
+                if (user.blocked != null)
+                    return res
+                        .status(400)
+                        .json({ error: 'User already blocked' });
+                if (user.group == 'admin' && req.user.group != 'admin')
+                    return res
+                        .status(403)
+                        .json({ error: 'You cannot block this user' });
+
+                const moderation = new Moderation({
+                    author: req.user._id,
+                    target: user._id,
+                    type: 'block',
+                    reason: req.body.reason,
+                    expires: req.body.expires
+                });
+
+                try {
+                    const savedModeration = await moderation.save();
+                    const newModeration = await Moderation.populate(
+                        savedModeration,
+                        [
+                            { path: 'author', select: { name: 1, group: 1 } },
+                            { path: 'target', select: { name: 1, group: 1 } }
+                        ]
+                    );
+
+                    await User.updateOne(
+                        { _id: user._id },
+                        { $set: { blocked: newModeration._id } }
+                    );
+
+                    res.json(newModeration);
+                } catch (err) {
+                    res.status(400).json({ error: 'Could not add moderation' });
+                }
+            } else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
+        }
+    }
+);
+
+router.get('/:id/ips', restrictTo('admin', 'moderator'), async (req, res) => {
     try {
-        const user = await User.findById(ObjectId(req.params.id));
+        const user = await User.findById(ObjectId(req.params.id)).select({
+            password: 0
+        });
         if (user) {
+            if (user.group == 'admin' && req.user.group != 'admin')
+                return res
+                    .status(403)
+                    .json({ error: "You cannot view this user's IPs" });
+
             try {
-                const logs = await Moderation.find({ target: user._id }).populate('author', { name: 1, group: 1 }).populate('target', { name: 1, group: 1 });
-    
-                res.json(logs);
-            } catch {
-                res.status(500).json({ error: 'Error listing moderation' });
+                const ips = await Log.aggregate([
+                    { $match: { user: user._id } },
+                    {
+                        $group: {
+                            _id: '$ip',
+                            uses: { $sum: 1 }
+                        }
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            ip: '$_id',
+                            uses: 1
+                        }
+                    }
+                ]);
+
+                res.json({
+                    user: user,
+                    ips: ips
+                });
+            } catch (err) {
+                res.status(400).json({ error: 'Could not retrieve IPs' });
             }
-        }
-        else res.status(404).json({ error: 'User not found' });
+        } else res.status(404).json({ error: 'User not found' });
     } catch {
         res.status(400).json({ error: 'User not found' });
     }
 });
 
-router.get('/:id/moderations/authored', restrictTo('admin'), async (req, res) => {
-    try {
-        const user = await User.findById(ObjectId(req.params.id));
-        if (user) {
-            try {
-                const logs = await Moderation.find({ author: user._id }).populate('author', { name: 1, group: 1 }).populate('target', { name: 1, group: 1 });
-    
-                res.json(logs);
-            } catch {
-                res.status(500).json({ error: 'Error listing moderation' });
-            }
-        }
-        else res.status(404).json({ error: 'User not found' });
-    } catch {
-        res.status(400).json({ error: 'User not found' });
-    }
-});
-
-router.post('/:id/block', restrictTo('admin', 'moderator'), async (req, res) => {
-    const { error } = addModerationValidation(req.body);
-    if (error) return res.status(400).json({ error: error.details[0].message });
-
-    try {
-        const user = await User.findById(ObjectId(req.params.id));
-        if (user) {
-            if (user.blocked != null) return res.status(400).json({ error: "User already blocked" });
-            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot block this user' });
-
-            const moderation = new Moderation({
-                author: req.user._id,
-                target: user._id,
-                type: 'block',
-                reason: req.body.reason,
-                expires: req.body.expires
+router.get(
+    '/:id/sameip',
+    restrictTo('admin', 'moderator'),
+    async (req, res) => {
+        try {
+            const user = await User.findById(ObjectId(req.params.id)).select({
+                password: 0
             });
-    
-            try {
-                const savedModeration = await moderation.save();    
-                const newModeration = await Moderation.populate(savedModeration, [{ path: 'author', select: { name: 1, group: 1 } }, { path: 'target', select: { name: 1, group: 1 } }]);
-    
-                await User.updateOne({ _id: user._id}, { $set: { blocked: newModeration._id } });
+            if (user) {
+                if (user.group == 'admin' && req.user.group != 'admin')
+                    return res
+                        .status(403)
+                        .json({ error: "You cannot view this user's IPs" });
 
-                res.json(newModeration);
-            } catch(err) {
-                res.status(400).json({ error: 'Could not add moderation' });
-            }
+                try {
+                    const ips = await Log.find({ user: user._id }).distinct(
+                        'ip'
+                    );
+                    const users = await Log.aggregate([
+                        { $match: { ip: { $in: ips } } },
+                        {
+                            $group: {
+                                _id: '$user',
+                                uses: { $sum: 1 },
+                                ips: { $addToSet: '$ip' }
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: 0,
+                                user: '$_id',
+                                ips: 1,
+                                uses: 1
+                            }
+                        }
+                    ]);
+
+                    const populatedUsers = await User.populate(users, [
+                        { path: 'user', select: { password: 0 } }
+                    ]);
+
+                    res.json(populatedUsers);
+                } catch (err) {
+                    res.status(400).json({ error: 'Could not retrieve IPs' });
+                }
+            } else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
         }
-        else res.status(404).json({ error: 'User not found' });
-    } catch {
-        res.status(400).json({ error: 'User not found' });
     }
-});
+);
+
+router.post(
+    '/:id/blockip',
+    restrictTo('admin', 'moderator'),
+    async (req, res) => {
+        const { error } = addModerationValidation(req.body);
+        if (error)
+            return res.status(400).json({ error: error.details[0].message });
+
+        try {
+            const user = await User.findById(ObjectId(req.params.id));
+            if (user) {
+                if (user.group == 'admin' && req.user.group != 'admin')
+                    return res
+                        .status(403)
+                        .json({ error: 'You cannot block this user' });
+
+                const latestIP = await Log.findOne({ user: user._id }).sort({
+                    created_at: -1
+                });
+                const blockedIP = await BlockedIP.findOne({
+                    ip: latestIP.ip,
+                    active: true
+                });
+
+                if (blockedIP)
+                    return res
+                        .status(400)
+                        .json({ error: 'User IP already blocked' });
+
+                try {
+                    const sameIPUsers = await Log.find({
+                        ip: latestIP.ip
+                    }).distinct('user');
+
+                    const moderation = new Moderation({
+                        author: req.user._id,
+                        target: user._id,
+                        type: 'block_ip',
+                        reason: req.body.reason,
+                        expires: req.body.expires
+                    });
+
+                    await moderation.save();
+
+                    const ipblock = new BlockedIP({
+                        ip: latestIP.ip,
+                        moderation: moderation._id
+                    });
+
+                    await ipblock.save();
+
+                    await User.updateMany(
+                        { _id: { $in: sameIPUsers } },
+                        { $set: { blocked: moderation._id } }
+                    );
+
+                    const blockedUsers = await User.find({
+                        _id: { $in: sameIPUsers }
+                    }).select({ password: 0 });
+
+                    res.json({
+                        ip: latestIP.ip,
+                        users: blockedUsers
+                    });
+                } catch (err) {
+                    res.status(400).json({ error: 'Could not add moderation' });
+                }
+            } else res.status(404).json({ error: 'User not found' });
+        } catch {
+            res.status(400).json({ error: 'User not found' });
+        }
+    }
+);
 
 router.post('/:id/unblock', restrictTo('admin'), async (req, res) => {
     const { error } = addModerationValidation(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
     try {
-        const user = await User.findById(ObjectId(req.params.id));
+        const user = await User.findById(ObjectId(req.params.id)).populate(
+            'blocked'
+        );
         if (user) {
-            if (user.blocked == null) return res.status(400).json({ error: "User already unblocked" });
+            if (user.blocked == null)
+                return res
+                    .status(400)
+                    .json({ error: 'User already unblocked' });
+
+            if (user.blocked.type == 'block_ip')
+                return res.status(400).json({
+                    error: 'User IP blocked, you must first unblock ip'
+                });
 
             const moderation = new Moderation({
                 author: req.user._id,
@@ -357,19 +645,27 @@ router.post('/:id/unblock', restrictTo('admin'), async (req, res) => {
                 type: 'unblock',
                 reason: req.body.reason
             });
-    
+
             try {
                 const savedModeration = await moderation.save();
-                const newModeration = await Moderation.populate(savedModeration, [{ path: 'author', select: { name: 1, group: 1 } }, { path: 'target', select: { name: 1, group: 1 } }]);
-    
-                await User.updateOne({ _id: user._id }, { $set: { blocked: undefined } });
+                const newModeration = await Moderation.populate(
+                    savedModeration,
+                    [
+                        { path: 'author', select: { name: 1, group: 1 } },
+                        { path: 'target', select: { name: 1, group: 1 } }
+                    ]
+                );
+
+                await User.updateOne(
+                    { _id: user._id },
+                    { $set: { blocked: undefined } }
+                );
 
                 res.json(newModeration);
-            } catch(err) {
+            } catch (err) {
                 res.status(400).json({ error: 'Could not add moderation' });
             }
-        }
-        else res.status(404).json({ error: 'User not found' });
+        } else res.status(404).json({ error: 'User not found' });
     } catch {
         res.status(400).json({ error: 'User not found' });
     }
@@ -382,8 +678,12 @@ router.post('/:id/mute', restrictTo('admin', 'moderator'), async (req, res) => {
     try {
         const user = await User.findById(ObjectId(req.params.id));
         if (user) {
-            if (user.muted != null) return res.status(400).json({ error: "User already muted" });
-            if (user.group == 'admin' && req.user.group != 'admin') return res.status(403).json({ error: 'You cannot mute this user' });
+            if (user.muted != null)
+                return res.status(400).json({ error: 'User already muted' });
+            if (user.group == 'admin' && req.user.group != 'admin')
+                return res
+                    .status(403)
+                    .json({ error: 'You cannot mute this user' });
 
             const moderation = new Moderation({
                 author: req.user._id,
@@ -392,19 +692,27 @@ router.post('/:id/mute', restrictTo('admin', 'moderator'), async (req, res) => {
                 reason: req.body.reason,
                 expires: req.body.expires
             });
-    
+
             try {
                 const savedModeration = await moderation.save();
-                const newModeration = await Moderation.populate(savedModeration, [{ path: 'author', select: { name: 1, group: 1 } }, { path: 'target', select: { name: 1, group: 1 } }]);
-    
-                await User.updateOne({ _id: user._id}, { $set: { muted: newModeration._id } });
+                const newModeration = await Moderation.populate(
+                    savedModeration,
+                    [
+                        { path: 'author', select: { name: 1, group: 1 } },
+                        { path: 'target', select: { name: 1, group: 1 } }
+                    ]
+                );
+
+                await User.updateOne(
+                    { _id: user._id },
+                    { $set: { muted: newModeration._id } }
+                );
 
                 res.json(newModeration);
-            } catch(err) {
+            } catch (err) {
                 res.status(400).json({ error: 'Could not add moderation' });
             }
-        }
-        else res.status(404).json({ error: 'User not found' });
+        } else res.status(404).json({ error: 'User not found' });
     } catch {
         res.status(400).json({ error: 'User not found' });
     }
@@ -417,7 +725,8 @@ router.post('/:id/unmute', restrictTo('admin'), async (req, res) => {
     try {
         const user = await User.findById(ObjectId(req.params.id));
         if (user) {
-            if (user.muted == null) return res.status(400).json({ error: "User already unmuted" });
+            if (user.muted == null)
+                return res.status(400).json({ error: 'User already unmuted' });
 
             const moderation = new Moderation({
                 author: req.user._id,
@@ -425,19 +734,27 @@ router.post('/:id/unmute', restrictTo('admin'), async (req, res) => {
                 type: 'unmute',
                 reason: req.body.reason
             });
-    
+
             try {
                 const savedModeration = await moderation.save();
-                const newModeration = await Moderation.populate(savedModeration, [{ path: 'author', select: { name: 1, group: 1 } }, { path: 'target', select: { name: 1, group: 1 } }]);
-    
-                await User.updateOne({ _id: user._id}, { $set: { muted: undefined } });
+                const newModeration = await Moderation.populate(
+                    savedModeration,
+                    [
+                        { path: 'author', select: { name: 1, group: 1 } },
+                        { path: 'target', select: { name: 1, group: 1 } }
+                    ]
+                );
+
+                await User.updateOne(
+                    { _id: user._id },
+                    { $set: { muted: undefined } }
+                );
 
                 res.json(newModeration);
-            } catch(err) {
+            } catch (err) {
                 res.status(400).json({ error: 'Could not add moderation' });
             }
-        }
-        else res.status(404).json({ error: 'User not found' });
+        } else res.status(404).json({ error: 'User not found' });
     } catch {
         res.status(400).json({ error: 'User not found' });
     }
