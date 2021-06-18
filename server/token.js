@@ -14,7 +14,8 @@ module.exports.verifyToken = async (token) => {
         const verified = jwt.verify(token, process.env.JWT_SIG);
         const user = await User.findOne({ _id: verified.id }).populate([
             { path: 'muted' },
-            { path: 'blocked' }
+            { path: 'blocked' },
+            { path: 'groups' }
         ]);
         if (verified.valid != user.password.slice(-3)) return null;
         return user;

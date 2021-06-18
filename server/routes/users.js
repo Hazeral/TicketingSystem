@@ -3,15 +3,16 @@ const User = require('../models/User');
 const Log = require('../models/Log');
 const Moderation = require('../models/Moderation');
 const BlockedIP = require('../models/BlockedIP');
-const restrictTo = require('../middleware/restrictTo');
+const can = require('../middleware/can');
+const { flags } = require('../permissions');
 
-router.get('/', async (req, res) => {
+router.get('/', can(flags.VIEW_USERS), async (req, res) => {
     const users = await User.find({}).select({ password: 0 });
 
     res.json(users);
 });
 
-router.get('/blocked', async (req, res) => {
+router.get('/blocked', can(flags.VIEW_BLOCKED_USERS), async (req, res) => {
     const users = await User.find({ blocked: { $ne: null } }).select({
         password: 0
     });
@@ -19,7 +20,7 @@ router.get('/blocked', async (req, res) => {
     res.json(users);
 });
 
-router.get('/muted', async (req, res) => {
+router.get('/muted', can(flags.VIEW_MUTED_USERS), async (req, res) => {
     const users = await User.find({ blocked: { $ne: null } }).select({
         password: 0
     });
@@ -27,7 +28,7 @@ router.get('/muted', async (req, res) => {
     res.json(users);
 });
 
-router.get('/ip/:ip', async (req, res) => {
+router.get('/ip/:ip', can(flags.VIEW_USERS_BY_IP), async (req, res) => {
     if (req.params.ip == '')
         return res.status(400).json({ error: 'You must provide an IP' });
 
@@ -50,7 +51,8 @@ router.get('/ip/:ip', async (req, res) => {
         ]);
 
         const populatedUsers = await User.populate(users, [
-            { path: 'user', select: { password: 0 } }
+            { path: 'user', select: { password: 0 } },
+            { path: 'user', populate: { path: 'groups' } }
         ]);
 
         res.json(populatedUsers);
@@ -59,7 +61,7 @@ router.get('/ip/:ip', async (req, res) => {
     }
 });
 
-router.post('/ip/:ip/block', async (req, res) => {
+router.post('/ip/:ip/block', can(flags.BLOCK_USERS_BY_IP), async (req, res) => {
     if (req.params.ip == '')
         return res.status(400).json({ error: 'You must provide an IP' });
 
@@ -119,60 +121,66 @@ router.post('/ip/:ip/block', async (req, res) => {
     }
 });
 
-router.post('/ip/:ip/unblock', restrictTo('admin'), async (req, res) => {
-    if (req.params.ip == '')
-        return res.status(400).json({ error: 'You must provide an IP' });
-
-    try {
-        const blockedIP = await BlockedIP.findOne({
-            ip: req.params.ip,
-            active: true
-        });
-
-        if (!blockedIP)
-            return res.status(400).json({ error: 'IP not blocked' });
+router.post(
+    '/ip/:ip/unblock',
+    can(flags.UNBLOCK_USERS_BY_IP),
+    async (req, res) => {
+        if (req.params.ip == '')
+            return res.status(400).json({ error: 'You must provide an IP' });
 
         try {
-            const sameIPUsers = await Log.find({
-                ip: req.params.ip
-            }).distinct('user');
-
-            if (sameIPUsers.length < 1)
-                return res.status(400).json({ error: 'No users use this IP' });
-
-            const moderation = new Moderation({
-                author: req.user._id,
-                target: sameIPUsers[0],
-                type: 'unblock',
-                reason: req.body.reason
-            });
-
-            await moderation.save();
-
-            await BlockedIP.findByIdAndUpdate(blockedIP._id, {
-                $set: { active: false }
-            });
-
-            await User.updateMany(
-                { _id: { $in: sameIPUsers } },
-                { $set: { blocked: null } }
-            );
-
-            const blockedUsers = await User.find({
-                _id: { $in: sameIPUsers }
-            }).select({ password: 0 });
-
-            res.json({
+            const blockedIP = await BlockedIP.findOne({
                 ip: req.params.ip,
-                users: blockedUsers
+                active: true
             });
-        } catch (err) {
-            console.log(err);
+
+            if (!blockedIP)
+                return res.status(400).json({ error: 'IP not blocked' });
+
+            try {
+                const sameIPUsers = await Log.find({
+                    ip: req.params.ip
+                }).distinct('user');
+
+                if (sameIPUsers.length < 1)
+                    return res
+                        .status(400)
+                        .json({ error: 'No users use this IP' });
+
+                const moderation = new Moderation({
+                    author: req.user._id,
+                    target: sameIPUsers[0],
+                    type: 'unblock',
+                    reason: req.body.reason
+                });
+
+                await moderation.save();
+
+                await BlockedIP.findByIdAndUpdate(blockedIP._id, {
+                    $set: { active: false }
+                });
+
+                await User.updateMany(
+                    { _id: { $in: sameIPUsers } },
+                    { $set: { blocked: null } }
+                );
+
+                const blockedUsers = await User.find({
+                    _id: { $in: sameIPUsers }
+                }).select({ password: 0 });
+
+                res.json({
+                    ip: req.params.ip,
+                    users: blockedUsers
+                });
+            } catch (err) {
+                console.log(err);
+                res.status(400).json({ error: 'Could not unblock IP' });
+            }
+        } catch {
             res.status(400).json({ error: 'Could not unblock IP' });
         }
-    } catch {
-        res.status(400).json({ error: 'Could not unblock IP' });
     }
-});
+);
 
 module.exports = router;

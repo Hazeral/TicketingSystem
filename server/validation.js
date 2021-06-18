@@ -1,6 +1,6 @@
 const joi = require('joi');
 
-module.exports.registerValidation = data => {
+module.exports.registerValidation = (data) => {
     const schema = joi.object({
         name: joi.string().max(25).required(),
         email: joi.string().email().max(100).required(),
@@ -10,7 +10,7 @@ module.exports.registerValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.loginValidation = data => {
+module.exports.loginValidation = (data) => {
     const schema = joi.object({
         email: joi.string().email().max(100).required(),
         password: joi.string().min(8).required()
@@ -19,7 +19,7 @@ module.exports.loginValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.changePasswordValidation = data => {
+module.exports.changePasswordValidation = (data) => {
     const schema = joi.object({
         current_password: joi.string().min(8).required(),
         password: joi.string().min(8).required()
@@ -28,7 +28,7 @@ module.exports.changePasswordValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.changePasswordAdminValidation = data => {
+module.exports.changePasswordAdminValidation = (data) => {
     const schema = joi.object({
         password: joi.string().min(8).required()
     });
@@ -36,7 +36,7 @@ module.exports.changePasswordAdminValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.changeDetailsValidation = data => {
+module.exports.changeDetailsValidation = (data) => {
     const schema = joi.object({
         name: joi.string().max(25).required(),
         email: joi.string().email().max(100).required()
@@ -45,15 +45,16 @@ module.exports.changeDetailsValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.changeGroupValidation = data => {
+module.exports.changeGroupValidation = (data) => {
     const schema = joi.object({
-        group: joi.string().valid('user', 'support', 'moderator', 'admin').required()
+        group: joi.string().required(),
+        action: joi.string().valid('add', 'remove').required()
     });
 
     return schema.validate(data);
 };
 
-module.exports.changeEmailValidation = data => {
+module.exports.changeEmailValidation = (data) => {
     const schema = joi.object({
         email: joi.string().email().max(100).required()
     });
@@ -61,7 +62,7 @@ module.exports.changeEmailValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.createTicketValidation = data => {
+module.exports.createTicketValidation = (data) => {
     const schema = joi.object({
         title: joi.string().max(50).required(),
         message: joi.string().max(500).required()
@@ -70,7 +71,7 @@ module.exports.createTicketValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.replyTicketValidation = data => {
+module.exports.replyTicketValidation = (data) => {
     const schema = joi.object({
         message: joi.string().max(500).required()
     });
@@ -78,7 +79,7 @@ module.exports.replyTicketValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.addModerationValidation = data => {
+module.exports.addModerationValidation = (data) => {
     const schema = joi.object({
         reason: joi.string().max(255).required(),
         expires: joi.date().timestamp()
@@ -87,7 +88,7 @@ module.exports.addModerationValidation = data => {
     return schema.validate(data);
 };
 
-module.exports.addNoteValidation = data => {
+module.exports.addNoteValidation = (data) => {
     const schema = joi.object({
         content: joi.string().max(255).required()
     });

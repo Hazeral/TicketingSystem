@@ -1,3 +1,5 @@
+const User = require('./models/User');
+
 module.exports.flags = {
     VIEW_USERS: 1n << 1n,
     VIEW_USERS_BY_IP: 1n << 2n,
@@ -44,7 +46,9 @@ module.exports.flags = {
     CREATE_USER_NOTE: 1n << 43n,
     CREATE_TICKET_NOTE: 1n << 44n,
     DELETE_NOTE: 1n << 45n,
-    IMMUNITY: 1n << 46n
+    IMMUNITY: 1n << 46n,
+    VIEW_BLOCKED_USERS: 1n << 47n,
+    VIEW_MUTED_USERS: 1n << 48n
 };
 
 module.exports.max = () => {
@@ -56,7 +60,7 @@ module.exports.max = () => {
 
 module.exports.total = (groups) => {
     // returns bitmask
-    // groups is an array of objects which should contain properties: type and flags
+    // groups is an array of objects which should contain properties: type and permissions
 
     const sorted = groups.sort((a, b) =>
         a.type != 'remove' ? -1 : b.type != 'remove' ? 1 : 0
@@ -66,13 +70,18 @@ module.exports.total = (groups) => {
 
     for (let i = 0; i < sorted.length; i++) {
         if (sorted[i].type == 'remove') {
-            total &= ~sorted[i].flags;
+            total &= ~BigInt(sorted[i].permissions);
         } else {
-            total |= sorted[i].flags;
+            total |= BigInt(sorted[i].permissions);
         }
     }
 
     return total;
+};
+
+module.exports.userHas = async (userID, flag) => {
+    const user = await User.findById(userID).populate('groups');
+    return this.total(user.groups) & flag;
 };
 
 // add other permission calc functions
@@ -81,9 +90,5 @@ module.exports.total = (groups) => {
 //     if (perms & this.flags[key]) console.log(key);
 // }
 
-// CHANGE MUTE/BLOCK INTO GROUPS
-// MAKE USER SCHEMA GROUP INTO ARRAY
-// MAKE GROUPS WITH DIFFERENT TYPES, SOME GROUPS PRIMARILY REMOVE FLAGS (MUTED,BLOCKED)
 // WHEN CREATING GROUP AND OPTION TO COPY OTHER GROUP PERMISSIONS (MAINLY FRONT END)
 // instead of restricting mods from modifying admins, now restrict from modifying anyone with immunity flag
-// choice to select whether a group is default
