@@ -38,7 +38,7 @@ router.post('/register', async (req, res) => {
             ip: req.socket.remoteAddress,
             user: user._id,
             type: 'auth',
-            url: req.url,
+            uri: req.url,
             user_agent: req.header('User-Agent')
         });
         await log.save();
@@ -158,7 +158,7 @@ router.post('/login', async (req, res) => {
         ip: req.socket.remoteAddress,
         user: user._id,
         type: 'auth',
-        url: req.url,
+        uri: req.url,
         user_agent: req.header('User-Agent')
     });
     await log.save();

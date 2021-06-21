@@ -16,7 +16,7 @@ const logSchema = new mongoose.Schema(
             required: true,
             enum: ['auth', 'token']
         },
-        url: {
+        uri: {
             type: String,
             required: true
         },

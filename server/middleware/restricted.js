@@ -127,7 +127,7 @@ module.exports = async (req, res, next) => {
             ip: req.socket.remoteAddress,
             user: user._id,
             type: 'token',
-            url: req.url,
+            uri: req.url,
             user_agent: req.header('User-Agent')
         });
         await log.save();
