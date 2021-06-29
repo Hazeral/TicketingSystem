@@ -20,6 +20,10 @@ const groupSchema = new mongoose.Schema(
             type: Long,
             required: true
         },
+        author: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
         default: {
             type: Boolean,
             default: false

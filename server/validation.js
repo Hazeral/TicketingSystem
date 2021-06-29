@@ -95,3 +95,25 @@ module.exports.addNoteValidation = (data) => {
 
     return schema.validate(data);
 };
+
+module.exports.createGroupValidation = (data) => {
+    const schema = joi.object({
+        name: joi.string().max(25).required(),
+        type: joi.string().valid('add', 'remove'),
+        permissions: joi.string().required(),
+        default: joi.string().valid('true', 'false')
+    });
+
+    return schema.validate(data);
+};
+
+module.exports.editGroupValidation = (data) => {
+    const schema = joi.object({
+        name: joi.string().max(25),
+        type: joi.string().valid('add', 'remove'),
+        permissions: joi.string(),
+        default: joi.string().valid('true', 'false')
+    });
+
+    return schema.validate(data);
+};

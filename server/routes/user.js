@@ -3,11 +3,12 @@ const { ObjectId } = require('mongoose').mongo;
 const { generateToken } = require('../token');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const Group = require('../models/Group');
 const Moderation = require('../models/Moderation');
 const BlockedIP = require('../models/BlockedIP');
 const Log = require('../models/Log');
 const Ticket = require('../models/Ticket');
-const { flags, userHas } = require('../permissions');
+const { flags, userHas, total } = require('../permissions');
 const can = require('../middleware/can');
 const {
     changePasswordValidation,
@@ -24,6 +25,7 @@ router.get('/@me', can(flags.VIEW_CURRENT_ACCOUNT_DETAILS), (req, res) => {
         name: req.user.name,
         email: req.user.email,
         groups: req.user.groups.map((g) => g.name),
+        permissions: total(req.user.groups).toString(),
         createdAt: req.user.createdAt,
         muted: req.user.muted
     });
@@ -374,6 +376,7 @@ router.patch(
                     if (index > -1) {
                         if (req.body.action == 'remove') {
                             user.groups.splice(index, 1);
+                            moderation.reason = `Removed group: '${req.body.group}'`;
                         } else {
                             res.status(400).json({
                                 error: 'User already has this group'
@@ -389,12 +392,6 @@ router.patch(
                         }
                     }
 
-                    if (req.body.action == 'add') {
-                        user.groups.push(ObjectId(req.body.group));
-                    } else {
-                        moderation.reason = `Removed group: '${req.body.group}'`;
-                    }
-
                     await User.updateOne(
                         { _id: user._id },
                         { $set: { groups: user.groups } }
@@ -402,7 +399,6 @@ router.patch(
 
                     await moderation.save();
 
-                    user.group = req.body.group;
                     const populatedUser = await User.populate(user, [
                         { path: 'muted' },
                         { path: 'blocked' },

@@ -10,6 +10,8 @@ const moderationsRoute = require('./routes/moderations');
 const moderationRoute = require('./routes/moderation');
 const notesRoute = require('./routes/notes');
 const noteRoute = require('./routes/note');
+const groupsRoute = require('./routes/groups');
+const groupRoute = require('./routes/group');
 const restricted = require('./middleware/restricted');
 const Group = require('./models/Group');
 const permissions = require('./permissions');
@@ -110,6 +112,8 @@ app.use('/api/moderations', moderationsRoute);
 app.use('/api/moderation', restricted, moderationRoute);
 app.use('/api/notes', restricted, notesRoute);
 app.use('/api/note', restricted, noteRoute);
+app.use('/api/groups', restricted, groupsRoute);
+app.use('/api/group', restricted, groupRoute);
 
 app.listen(port, () => {
     console.log(`Server listening on port ${port}`);

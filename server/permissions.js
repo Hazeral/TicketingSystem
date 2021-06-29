@@ -48,7 +48,14 @@ module.exports.flags = {
     DELETE_NOTE: 1n << 45n,
     IMMUNITY: 1n << 46n,
     VIEW_BLOCKED_USERS: 1n << 47n,
-    VIEW_MUTED_USERS: 1n << 48n
+    VIEW_MUTED_USERS: 1n << 48n,
+    VIEW_GROUPS: 1n << 49n,
+    EDIT_GROUP: 1n << 50n,
+    CREATE_GROUP: 1n << 51n,
+    VIEW_USERS_BY_GROUP: 1n << 52n,
+    VIEW_GROUPS_BY_FLAG: 1n << 53n,
+    VIEW_GROUP: 1n << 54n,
+    DELETE_GROUP: 1n << 55n
 };
 
 module.exports.max = () => {
