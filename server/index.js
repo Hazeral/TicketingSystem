@@ -15,6 +15,7 @@ const groupRoute = require('./routes/group');
 const restricted = require('./middleware/restricted');
 const Group = require('./models/Group');
 const permissions = require('./permissions');
+const rateLimit = require('express-rate-limit');
 const app = express();
 const port = 3000;
 
@@ -101,6 +102,13 @@ mongoose.connect(
     }
 );
 
+const limiter = rateLimit({
+    windowMs: 60000,
+    max: 100,
+    message: { error: 'Rate limited' }
+}); // 100 requests per min rate limit
+
+app.use(limiter);
 app.use(express.json());
 
 app.use('/api/auth', authRoute);
