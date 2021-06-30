@@ -6,6 +6,7 @@ A ticketing system with secure authentication and authorization.
 You can find the installation instructions and API information [here](server/README.md).
 
 ## Client
+Note: There is currently no web client.
 
 ```bash
 
