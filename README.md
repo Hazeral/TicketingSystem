@@ -1,6 +1,6 @@
 # Ticket System
 
-A ticketing system with secure authentication and authorization as well as a single-page client web application.
+A ticketing system with secure authentication and authorization.
 
 ## Server
 You can find the installation instructions and API information [here](server/README.md).
@@ -10,4 +10,3 @@ You can find the installation instructions and API information [here](server/REA
 ```bash
 
 ```
-// insert images
