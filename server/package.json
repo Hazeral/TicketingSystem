@@ -2,11 +2,12 @@
   "name": "server",
   "version": "1.0.0",
   "description": "To run the server you must first create a .env file that will hold all the credentials.",
+  "homepage" : "https://github.com/Hazeral/TicketingSystem/server",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Muhammad Usman",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.0.1",
