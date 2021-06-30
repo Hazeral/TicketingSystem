@@ -7,7 +7,7 @@ const {
     createTicketValidation,
     replyTicketValidation
 } = require('../validation');
-const { flags, total } = require('../permissions');
+const { flags, userHas } = require('../permissions');
 
 router.get('/:id', can(flags.VIEW_TICKET), async (req, res) => {
     try {
@@ -30,7 +30,7 @@ router.get('/:id', can(flags.VIEW_TICKET), async (req, res) => {
         if (ticket) {
             if (
                 ticket.author._id == req.user.id ||
-                total(req.user.groups) & flags.VIEW_TICKETS
+                userHas(req.user._id, flags.VIEW_TICKETS)
             ) {
                 if (ticket.author._id == req.user.id) {
                     await Ticket.updateOne(
@@ -118,7 +118,7 @@ router.patch(
             if (ticket) {
                 if (
                     ticket.author._id == req.user.id ||
-                    total(req.user.groups) & flags.VIEW_TICKETS
+                    userHas(req.user._id, flags.VIEW_TICKETS)
                 ) {
                     if (ticket.author._id == req.user.id) {
                         if (
@@ -202,7 +202,7 @@ router.patch('/:id/close', can(flags.CLOSE_TICKET), async (req, res) => {
         if (ticket) {
             if (
                 ticket.author._id == req.user.id ||
-                total(req.user.groups) & flags.VIEW_TICKETS
+                userHas(req.user._id, flags.VIEW_TICKETS)
             ) {
                 if (['closed', 'closed_permanently'].includes(ticket.status))
                     return res
@@ -335,7 +335,7 @@ router.patch('/:id/open', can(flags.OPEN_TICKET), async (req, res) => {
         if (ticket) {
             if (
                 ticket.author._id == req.user.id ||
-                total(req.user.groups) & flags.VIEW_TICKETS
+                userHas(req.user._id, flags.VIEW_TICKETS)
             ) {
                 if (ticket.status == 'open')
                     return res

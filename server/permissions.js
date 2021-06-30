@@ -96,6 +96,3 @@ module.exports.userHas = async (userID, flag) => {
 // for (key in this.flags) {
 //     if (perms & this.flags[key]) console.log(key);
 // }
-
-// WHEN CREATING GROUP AND OPTION TO COPY OTHER GROUP PERMISSIONS (MAINLY FRONT END)
-// instead of restricting mods from modifying admins, now restrict from modifying anyone with immunity flag
